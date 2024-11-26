@@ -11,34 +11,120 @@
     </div>
 }
 
-<h2>Editare Materie</h2>
+<h2 class="text-center">Editare Materie</h2>
 
 @using (Html.BeginForm("EditMaterie", "Professors", FormMethod.Post, new { id = Model.Id }))
 {
-    <label>Selectați Materiile</label>
-    <br />
+    <div class="form-container">
+       
+        <div class="materii-container">
+            @foreach (var materie in Model.Materii)
+            {
+                <div class="form-check">
+                    <input type="checkbox"
+                           class="form-check-input"
+                           id="materie_@materie.Value"
+                           name="SelectedMateriiIds"
+                           value="@materie.Value"
+                    @(Model.SelectedMateriiIds.Contains(int.Parse(materie.Value)) ? "checked" : "") />
+                    <label class="form-check-label" for="materie_@materie.Value">
+                        @materie.Text
+                    </label>
+                </div>
+            }
+        </div>
 
-    <div>
-        @foreach (var materie in Model.Materii)
-        {
-            <div class="form-check">
-                <input type="checkbox"
-                       class="form-check-input"
-                       id="materie_@materie.Value"
-                       name="SelectedMateriiIds"
-                       value="@materie.Value"
-                @(Model.SelectedMateriiIds.Contains(int.Parse(materie.Value)) ? "checked" : "") />
-                <label class="form-check-label" for="materie_@materie.Value">
-                    @materie.Text
-                </label>
-            </div>
-        }
+        <div class="form-actions">
+            @Html.HiddenFor(m => m.CompletedProfile)
+            @Html.HiddenFor(m => m.ApplicationUserId)
+            @Html.HiddenFor(m => m.FacultateID)
+
+            <button type="submit" class="btn btn-primary btn-lg">Save</button>
+        </div>
     </div>
-
-    @Html.HiddenFor(m => m.CompletedProfile)
-    @Html.HiddenFor(m => m.ApplicationUserId)
-    @Html.HiddenFor(m => m.FacultateID)
-
-    <br />
-    <button type="submit" class="btn btn-primary">Save</button>
 }
+
+<style>
+    /* General page style */
+    body {
+        font-family: Arial, sans-serif;
+        background-color: #f4f4f4;
+        color: #333;
+    }
+
+    h2 {
+        color: #ffffff;
+        font-size: 2rem;
+    }
+
+    /* Container styling */
+    .form-container {
+        background-color: #fff;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        max-width: 600px;
+        margin: 0 auto;
+        background: rgba(241, 241, 241, 0.5); /* Fundal semi-transparent */
+        backdrop-filter: blur(5px); /* Efect de blur pentru fundal de tip glass */
+    }
+
+     /* .form-label {
+         display: block;
+         font-size: 1.1rem;
+         font-weight: bold;
+         margin-bottom: 10px;
+         color: #333;
+     } */
+
+    .form-check-input {
+        margin-right: 15px;
+    }
+
+    .materii-container {
+        margin-bottom: 20px;
+        
+    }
+
+    .form-check {
+        margin-bottom: 15px;
+        margin-left: 15px;
+        background-color: #f8f9fa;
+        padding: 10px;
+        border-radius: 6px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        background: rgba(241, 241, 241, 0.5); /* Fundal semi-transparent */
+        backdrop-filter: blur(7px); /* Efect de blur pentru fundal de tip glass */
+    }
+
+    .form-check-label {
+        color: #000;
+        font-size: 1rem;
+        margin-left: 5px;
+    }
+
+    .form-check-input:checked {
+        background-color: #007bff;
+        border-color: #007bff;
+        
+    }
+
+    .btn-primary {
+        background-color: #007bff;
+        border-color: #007bff;
+    }
+
+    .btn-lg {
+        padding: 10px 20px;
+        font-size: 1.1rem;
+    }
+
+    /* Error message styling */
+    .alert-danger {
+        color: #fff;
+        background-color: #dc3545;
+        border-color: #dc3545;
+        border-radius: 4px;
+        padding: 15px;
+    }
+</style>

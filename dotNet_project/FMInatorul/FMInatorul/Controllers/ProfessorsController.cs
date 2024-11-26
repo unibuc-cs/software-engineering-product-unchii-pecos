@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
+using System.Drawing;
 
 namespace FMInatorul.Controllers
 {
@@ -87,32 +88,56 @@ namespace FMInatorul.Controllers
 
         // Handles the post request to edit the subject for a professor.
         [HttpPost]
-        public async Task<IActionResult> EditMaterie(int id, Profesor profesor)
+        public async Task<IActionResult> EditMaterie(Profesor profesor)
         {
-            if (ModelState.IsValid) 
+            // Validare: Verifică dacă s-au selectat materii
+            if (profesor.SelectedMateriiIds == null || !profesor.SelectedMateriiIds.Any())
             {
-                TempData["ErrorMessage"] = "Please select at least one subject.";
-                return RedirectToAction("EditMaterie", new { id });
+                TempData["ErrorMessage"] = "Vă rugăm să selectați cel puțin o materie.";
+                return RedirectToAction("EditMaterie", "Professors");
             }
 
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null)
+            {
+                return Challenge();
+            }
+            var profesor2 = await db.Professors.FirstOrDefaultAsync(s => s.ApplicationUserId == user.Id);
+            // Obține profesorul din baza de date
             var profesorToUpdate = await db.Professors
-                .FirstOrDefaultAsync(p => p.Id == id);
+                .Include(p => p.MateriiPredate) 
+                .FirstOrDefaultAsync(p => p.Id == profesor2.Id);
 
             if (profesorToUpdate == null)
             {
                 return NotFound();
             }
 
-            // Actualizează materiile predate
-            profesorToUpdate.MateriiPredate = (ICollection<Materie>?)profesor.SelectedMateriiIds;
+            // Obține entitățile `Materie` corespunzătoare ID-urilor selectate
+            var selectedMaterii = await db.Materii
+                .Where(m => profesor.SelectedMateriiIds.Contains(m.Id))
+                .ToListAsync();
 
+            // Actualizează relația `MateriiPredate`
+            profesorToUpdate.MateriiPredate = selectedMaterii;
+
+            // Marcare profil completat (opțional)
             profesorToUpdate.CompletedProfile = true;
 
-            await db.SaveChangesAsync();
+            // Salvează modificările
+            try
+            {
+                await db.SaveChangesAsync();
+                TempData["SuccessMessage"] = "Materiile au fost actualizate cu succes.";
+            }
+            catch (Exception ex)
+            {
+                TempData["ErrorMessage"] = "A apărut o eroare la salvarea modificărilor: " + ex.Message;
+            }
 
-            TempData["SuccessMessage"] = "Materii updated successfully.";
             return RedirectToAction("Index", "Professors");
         }
+
 
 
         // Returns the view to validate or delete questions for a professor.
