@@ -4,6 +4,7 @@ using FMInatorul.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,10 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FMInatorul.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250104205835_RoomsAndParticipants")]
+    partial class RoomsAndParticipants
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -247,12 +249,7 @@ namespace FMInatorul.Migrations
                         .HasMaxLength(6)
                         .HasColumnType("nvarchar(6)");
 
-                    b.Property<int>("MaterieID")
-                        .HasColumnType("int");
-
                     b.HasKey("RoomId");
-
-                    b.HasIndex("MaterieID");
 
                     b.ToTable("Rooms");
                 });
@@ -514,17 +511,6 @@ namespace FMInatorul.Migrations
                     b.Navigation("ApplicationUser");
 
                     b.Navigation("Facultate");
-                });
-
-            modelBuilder.Entity("FMInatorul.Models.Room", b =>
-                {
-                    b.HasOne("FMInatorul.Models.Materie", "Materie")
-                        .WithMany()
-                        .HasForeignKey("MaterieID")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Materie");
                 });
 
             modelBuilder.Entity("FMInatorul.Models.Student", b =>

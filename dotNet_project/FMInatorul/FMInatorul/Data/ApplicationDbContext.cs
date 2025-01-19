@@ -21,6 +21,10 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<Variante> Variantes { get; set; }
     public DbSet<Facultate> Facultati { get; set; }
 
+    // room
+    public DbSet<Room> Rooms { get; set; }
+    public DbSet<Participant> Participants { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -37,6 +41,5 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             .HasOne<IntrebariRasp>(a => a.IntrebariRasp)
             .WithMany(c => c.Variante)
             .HasForeignKey(a => a.IntrebariRaspId);
-
     }
 }

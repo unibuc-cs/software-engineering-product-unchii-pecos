@@ -1,5 +1,6 @@
 ﻿using FMInatorul.Data;
 using FMInatorul.Models;
+using FMInatorul.Utilities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -7,6 +8,7 @@ using Newtonsoft.Json;
 using NuGet.Protocol;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Text;
 using System.Xml.Serialization;
 
 namespace FMInatorul.Controllers;
@@ -99,12 +101,17 @@ public class HomeController : Controller
 			return BadRequest("Invalid file format. Only PDF files allowed!");
 		}
 
-        //Upload PDF to Flask API
-        //http://46.101.136.24/
+        var apiSecret = Environment.GetEnvironmentVariable("API_PASSWORD");
+        var jwtToken = await HttpHelper.GetJwtTokenAsync("dotnet_user", apiSecret, "https://api.fminatorul.xyz/login");
+        if (string.IsNullOrEmpty(jwtToken))
+        {
+            return StatusCode(401, "Failed to authenticate with the Flask API");
+        }
 
-        var response = await UploadPdfToFlaskApiAsync(file, "http://34.65.214.77/");
 
-		if (response.IsSuccessStatusCode)
+        var response = await HttpHelper.UploadPdfToFlaskApiAsync(file, "https://api.fminatorul.xyz/api/generate-quiz-external-links", jwtToken);
+
+        if (response.IsSuccessStatusCode)
 		{
 			var responseString = await response.Content.ReadAsStringAsync();
 			Console.WriteLine(responseString);
@@ -142,27 +149,9 @@ public class HomeController : Controller
 			return StatusCode((int)response.StatusCode, $"Error uploading file: {response.ReasonPhrase}");
 		}
 	}
-
-	// Checks if the uploaded file is a PDF.
-	private bool IsPdfFile(IFormFile file)
+    // Checks if the uploaded file is a PDF.
+    private bool IsPdfFile(IFormFile file)
 	{
 		return file.ContentType.Contains("application/pdf");
-	}
-
-	// Uploads a PDF file to the Flask API and returns the response.
-	private async Task<HttpResponseMessage> UploadPdfToFlaskApiAsync(IFormFile file, string url)
-	{
-		using (var client = new HttpClient())
-		{
-			using (var multipartContent = new MultipartFormDataContent())
-			{
-				using (var fileStream = file.OpenReadStream())
-				{
-					multipartContent.Add(new StreamContent(fileStream), "file", Path.GetFileName(file.FileName));
-					var response = await client.PostAsync(url, multipartContent);
-					return response;
-				}
-			}
-		}
 	}
 }

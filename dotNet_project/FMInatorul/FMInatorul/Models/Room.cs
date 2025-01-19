@@ -3,12 +3,12 @@ using System.ComponentModel.DataAnnotations;
 public class Room
 {
     [Key]
-    public int id { get; set; }
-    public string codRoom { get; set; }
-    public string numeRoom { get; set; }
-    public string idProf { get; set; }
-    public string idMaterie { get; set; }
+    public int RoomId { get; set; }
 
- 
-
+    [Required]
+    [MaxLength(6)]
+    public string Code { get; set; }    
+    public ICollection<Participant> Participants { get; set; }
+    public int MaterieID { get; set; }
+    public virtual Materie Materie { get; set; }
 }

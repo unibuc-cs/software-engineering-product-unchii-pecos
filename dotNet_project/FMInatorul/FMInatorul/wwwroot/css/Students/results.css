@@ -8,3 +8,50 @@
     backdrop-filter: blur(15px);
     -webkit-backdrop-filter: blur(15px);
 }
+.external-links {
+    display: flex;
+    flex-direction: column;
+    gap: 15px; /* Space between the links */
+    margin-top: 30px;
+}
+
+.link-preview {
+    width: 100%;
+}
+
+.link-box {
+    display: block;
+    padding: 15px;
+    border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    text-decoration: none; /* Remove default underline */
+    color: #41b8cd; /* Blue link color */
+    font-size: 1em;
+    font-weight: bold;
+    text-align: center; /* Center-align the text */
+    transition: background-color 0.3s, box-shadow 0.3s; /* Smooth hover effect */
+}
+
+    .link-box:hover {
+        background-color: #e3f2fd; /* Slightly darker background on hover */
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2); /* Add a shadow effect */
+        color: #003399; /* Darker blue on hover */
+    }
+
+
+.link-section{
+    margin: 2rem 0;
+}
+
+.link-section h2{
+    color: aliceblue;
+    text-align:center;
+}
+
+.glass {
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.5), rgb(0, 0, 0,0.5));
+    backdrop-filter: blur(15px);
+    -webkit-backdrop-filter: blur(15px);
+/*    border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.18);*/
+}

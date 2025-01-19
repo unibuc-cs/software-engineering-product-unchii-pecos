@@ -4,6 +4,7 @@ using FMInatorul.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,10 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FMInatorul.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20241118080129_CvEroare")]
+    partial class CvEroare
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -158,9 +160,6 @@ namespace FMInatorul.Migrations
                     b.Property<int>("FacultateID")
                         .HasColumnType("int");
 
-                    b.Property<int?>("ProfesorId")
-                        .HasColumnType("int");
-
                     b.Property<int>("anStudiu")
                         .HasColumnType("int");
 
@@ -179,32 +178,7 @@ namespace FMInatorul.Migrations
 
                     b.HasIndex("FacultateID");
 
-                    b.HasIndex("ProfesorId");
-
                     b.ToTable("Materii");
-                });
-
-            modelBuilder.Entity("FMInatorul.Models.Participant", b =>
-                {
-                    b.Property<int>("ParticipantId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ParticipantId"), 1L, 1);
-
-                    b.Property<int>("RoomId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("StudentId")
-                        .HasColumnType("int");
-
-                    b.HasKey("ParticipantId");
-
-                    b.HasIndex("RoomId");
-
-                    b.HasIndex("StudentId");
-
-                    b.ToTable("Participants");
                 });
 
             modelBuilder.Entity("FMInatorul.Models.Profesor", b =>
@@ -225,36 +199,18 @@ namespace FMInatorul.Migrations
                     b.Property<int>("FacultateID")
                         .HasColumnType("int");
 
+                    b.Property<int?>("MaterieId")
+                        .HasColumnType("int");
+
                     b.HasKey("Id");
 
                     b.HasIndex("ApplicationUserId");
 
                     b.HasIndex("FacultateID");
 
+                    b.HasIndex("MaterieId");
+
                     b.ToTable("Professors");
-                });
-
-            modelBuilder.Entity("FMInatorul.Models.Room", b =>
-                {
-                    b.Property<int>("RoomId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("RoomId"), 1L, 1);
-
-                    b.Property<string>("Code")
-                        .IsRequired()
-                        .HasMaxLength(6)
-                        .HasColumnType("nvarchar(6)");
-
-                    b.Property<int>("MaterieID")
-                        .HasColumnType("int");
-
-                    b.HasKey("RoomId");
-
-                    b.HasIndex("MaterieID");
-
-                    b.ToTable("Rooms");
                 });
 
             modelBuilder.Entity("FMInatorul.Models.Student", b =>
@@ -471,30 +427,7 @@ namespace FMInatorul.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("FMInatorul.Models.Profesor", null)
-                        .WithMany("MateriiPredate")
-                        .HasForeignKey("ProfesorId");
-
                     b.Navigation("Facultate");
-                });
-
-            modelBuilder.Entity("FMInatorul.Models.Participant", b =>
-                {
-                    b.HasOne("FMInatorul.Models.Room", "Room")
-                        .WithMany("Participants")
-                        .HasForeignKey("RoomId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("FMInatorul.Models.Student", "Student")
-                        .WithMany()
-                        .HasForeignKey("StudentId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Room");
-
-                    b.Navigation("Student");
                 });
 
             modelBuilder.Entity("FMInatorul.Models.Profesor", b =>
@@ -511,18 +444,13 @@ namespace FMInatorul.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("FMInatorul.Models.Materie", "Materie")
+                        .WithMany()
+                        .HasForeignKey("MaterieId");
+
                     b.Navigation("ApplicationUser");
 
                     b.Navigation("Facultate");
-                });
-
-            modelBuilder.Entity("FMInatorul.Models.Room", b =>
-                {
-                    b.HasOne("FMInatorul.Models.Materie", "Materie")
-                        .WithMany()
-                        .HasForeignKey("MaterieID")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
 
                     b.Navigation("Materie");
                 });
@@ -621,16 +549,6 @@ namespace FMInatorul.Migrations
             modelBuilder.Entity("FMInatorul.Models.Materie", b =>
                 {
                     b.Navigation("IntrebariRasp");
-                });
-
-            modelBuilder.Entity("FMInatorul.Models.Profesor", b =>
-                {
-                    b.Navigation("MateriiPredate");
-                });
-
-            modelBuilder.Entity("FMInatorul.Models.Room", b =>
-                {
-                    b.Navigation("Participants");
                 });
 #pragma warning restore 612, 618
         }

@@ -1,83 +1,213 @@
-﻿
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html>
 <head>
     <title>Quiz</title>
     <style>
-        .question-box {
-            border: 2px solid #ccc;
+        body {
+            background-color: #1e1e1e;
+            color: #ffffff;
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            height: 100vh;
+        }
+
+        #sidebar {
+            width: 20%;
+            background-color: #2d2d2d;
+            padding: 20px;
+            box-shadow: 2px 0 5px rgba(0, 0, 0, 0.2);
+            overflow-y: auto;
+        }
+
+            #sidebar h3 {
+                color: #ffffff;
+                text-align: center;
+            }
+
+        .question-link {
+            display: block;
             padding: 10px;
+            margin: 5px 0;
+            background-color: #444;
+            color: #ffffff;
+            text-decoration: none;
+            text-align: center;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+            .question-link.active {
+                background-color: #007bff;
+                font-weight: bold;
+            }
+
+            .question-link.answered {
+                background-color: #28a745;
+            }
+
+        #main-content {
+            width: 80%;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .question-box {
             margin-bottom: 20px;
-            color: white; /* Schimbați culoarea textului la alb */
+            padding: 15px;
+            background-color: #333;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
         }
 
-        .choices-box {
-            margin-left: 25px;
+            .question-box h4 {
+                margin: 0 0 15px 0;
+            }
+
+        .choices-box label {
+            display: block;
+            margin-bottom: 10px;
+            padding: 10px;
+            background-color: #444;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.3s ease;
         }
 
-        label {
-            color: white; /* Schimbați culoarea textului la alb pentru etichetele de răspuns */
-            display: block; /* Afișați fiecare etichetă pe un nou rând */
-            margin-bottom: 10px; /* Adăugați spațiu între fiecare etichetă */
-        }
+            .choices-box label:hover {
+                background-color: #555;
+            }
 
         input[type="radio"] {
-            margin-right: 5px; /* Ajustați spațiul dintre butonul radio și etichetă */
+            margin-right: 10px;
         }
 
         input[type="submit"] {
-            display: block; /* Afișați butonul de submit pe un nou rând */
-            margin-top: 20px; /* Adăugați spațiu între buton și casetele de răspuns */
+            display: block;
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-top: 20px;
         }
+
+            input[type="submit"]:hover {
+                background-color: #0056b3;
+            }
     </style>
 </head>
 <body>
-    <h2>Quiz</h2>
-    <div id="quizContainer">
-        @if (!string.IsNullOrEmpty(Model))
-        {
-            <form method="post" asp-controller="Students" asp-action="QuizResult">
-                <!-- Serialize the entire model for debugging -->
-                <input type="hidden" id="jsonData" name="jsonData" value="@Html.Raw(Json.Serialize(Model))" />
-                <script>
-                    var jsonData = JSON.parse('@Html.Raw(Json.Serialize(Model))');
-                    console.log(jsonData); // Verifică datele
-
-                    var quizContainer = document.getElementById('quizContainer');
-                    var questionIndex = 0; // Index for each question
-
-            jsonData.questions.slice(1).forEach(function (question) {
-                var questionBox = document.createElement('div');
-                questionBox.className = 'question-box';
-                questionBox.innerHTML = '<p>' + question.question + '</p>';
-
-                        var choicesBox = document.createElement('div');
-                        choicesBox.className = 'choices-box';
-
-                        for (var choiceKey in question.choices) {
-                            var label = document.createElement('label');
-                            var radio = document.createElement('input');
-                            radio.type = 'radio';
-                            radio.name = 'Questions[' + questionIndex + '].SelectedAnswer'; // Correct naming to bind with the model
-                            radio.value = choiceKey;
-                            label.appendChild(radio);
-                            label.appendChild(document.createTextNode(question.choices[choiceKey]));
-                            choicesBox.appendChild(label);
-                        }
-
-                        questionBox.appendChild(choicesBox);
-                        quizContainer.appendChild(questionBox);
-                        questionIndex++;
-                    });
-                </script>
-                <input type="submit" value="Submit Quiz">
-            </form>
-        }
-        else
-        {
-            <p>No quiz data available.</p>
-        }
+    <div id="sidebar">
+        <h3>Questions</h3>
+        <div id="questionList">
+            <!-- Question links will be dynamically inserted here -->
+        </div>
     </div>
-</body>
+    <div id="main-content">
+        <h2>Quiz</h2>
+        <form method="post" asp-controller="Students" asp-action="QuizResult" id="quizForm">
+            <!-- Dynamic content will be inserted here -->
+        </form>
+    </div>
 
+    <script>
+        var quizData = JSON.parse('@Html.Raw(Json.Serialize(Model))');
+
+        var currentQuestionIndex = 0;
+
+        // Populate the sidebar with question numbers
+        var questionList = document.getElementById("questionList");
+        quizData.questions.forEach(function (question, index) {
+            var questionLink = document.createElement("a");
+            questionLink.className = "question-link";
+            questionLink.textContent = index + 1;
+            questionLink.dataset.index = index;
+            questionLink.onclick = function () {
+                showQuestion(index);
+            };
+            questionList.appendChild(questionLink);
+        });
+
+        // Display the first question
+        showQuestion(0);
+
+        function showQuestion(index) {
+            currentQuestionIndex = index;
+
+            // Highlight the active question in the sidebar
+            var links = document.querySelectorAll(".question-link");
+            links.forEach(function (link, i) {
+                if (i === index) {
+                    link.classList.add("active");
+                } else {
+                    link.classList.remove("active");
+                }
+            });
+
+            // Display the question
+            var mainContent = document.getElementById("quizForm");
+            mainContent.innerHTML = ""; // Clear previous content
+
+            var questionData = quizData.questions[index];
+            var questionBox = document.createElement("div");
+            questionBox.className = "question-box";
+
+            var questionTitle = document.createElement("h4");
+            questionTitle.textContent = "Q" + (index + 1) + ": " + questionData.question;
+            questionBox.appendChild(questionTitle);
+
+            var choicesBox = document.createElement("div");
+            choicesBox.className = "choices-box";
+
+            for (var choiceKey in questionData.choices) {
+                var label = document.createElement("label");
+                var radio = document.createElement("input");
+                radio.type = "radio";
+                radio.name = "Questions[" + index + "].SelectedAnswer"; // Correct naming for binding
+                radio.value = choiceKey;
+                radio.checked = questionData.SelectedAnswer === choiceKey;
+                radio.onchange = function () {
+                    questionData.SelectedAnswer = this.value;
+                    updateSidebar();
+                    goToNextQuestion();
+                };
+                label.appendChild(radio);
+                label.appendChild(document.createTextNode(questionData.choices[choiceKey]));
+                choicesBox.appendChild(label);
+            }
+
+            questionBox.appendChild(choicesBox);
+            mainContent.appendChild(questionBox);
+
+            // Add the submit button at the end of the form
+            if (index === quizData.questions.length - 1) {
+                var submitButton = document.createElement("input");
+                submitButton.type = "submit";
+                submitButton.value = "Submit Quiz";
+                mainContent.appendChild(submitButton);
+            }
+        }
+
+        function updateSidebar() {
+            var links = document.querySelectorAll(".question-link");
+            quizData.questions.forEach(function (question, index) {
+                if (question.SelectedAnswer) {
+                    links[index].classList.add("answered");
+                } else {
+                    links[index].classList.remove("answered");
+                }
+            });
+        }
+
+        function goToNextQuestion() {
+            if (currentQuestionIndex < quizData.questions.length - 1) {
+                showQuestion(currentQuestionIndex + 1);
+            }
+        }
+    </script>
+</body>
 </html>

@@ -1,90 +1,81 @@
-﻿<!DOCTYPE html>
+﻿@model FMInatorul.Models.Student
+@{
+    var materii = ViewBag.Materii as List<Materie>;
+}
+
+<!DOCTYPE html>
 <html lang="ro">
 <head>
     <title>Joacă Trivia</title>
     <link rel="stylesheet" href="/css/Students/play.css" />
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #f5f5f5;
-            margin: 20px;
-            padding: 0;
-            text-align: center; /* Centreaza textul global */
-        }
-
-        h1 {
-            font-size: 3em;
-            margin-bottom: 50px; /* Spatiere crescuta pentru titlu */
-            font-family: 'Dancing Script', cursive; /* Font decorativ pentru titlu */
-        }
-
-        h2 {
-            font-size: 2em;
-            color: white;
-            margin-bottom: 50px; /* Spatiere crescuta pentru titlu */
-            font-family: 'Dancing Script', cursive; /* Font decorativ pentru titlu */
-        }
-
-        /* Stiluri container joc */
-        .game-container {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            width: 80%; /* Ajusteaza latimea dupa cum e necesar */
-            margin: 0 auto; /* Centreaza orizontal */
-        }
-
-        .game-section {
-            margin-bottom: 30px; /* Spatiere intre sectiuni */
-        }
-
-        /* Stiluri butoane specifice pentru pagina */
-        .page-btn {
-            display: inline-block;
-            padding: 15px 30px; /* Marime crescuta a butonului */
-            border: none;
-            border-radius: 50px; /* Colturi rotunjite */
-            font-size: 18px; /* Marime mai mare a fontului pentru butoane */
-            cursor: pointer;
-            transition: background-color 0.3s ease;
-            background-color: #3f51b5; /* Fundal albastru inchis */
-            color: white;
-            margin-bottom: 10px; /* Spatiere intre butoane */
-        }
-
-        .page-btn:hover {
-            background-color: #28377d; /* Albastru mai inchis la hover */
-        }
-
-        /* Stiluri suplimentare pentru elemente specifice (daca este necesar) */
-        .game-footer {
-            margin-top: 50px; /* Adauga spatiu inainte de footer */
-            font-size: 12px;
-            color: #666;
-        }
-    </style>
 </head>
 <body>
     <div>
         <label for="gameModeButtons" class="text-white"><h1>Ce mod de joc alegi?</h1></label>
         <div id="gameModeButtons">
             <button type="button" id="singleplayerBtn" class="page-btn">Singleplayer</button>
-            <button type="button" id="multiplayerBtn" class="page-btn" onclick="window.location.href='/Students/ChatView'">Multiplayer</button>
+            <button type="button" id="multiplayerBtn" class="page-btn">Multiplayer</button>
+        </div>
+
+        <div id="multiplayerChoice" style="display: none;">
+            <p class="text-white"><h2>Creează sau alătură-te unui joc!</h2></p>
+            @using (Html.BeginForm("CreateRoom", "Rooms", FormMethod.Post))
+            {
+                <div class="form-container">
+
+                    <div class="materii-container">
+                        <label for="materiiDropdown" class="text-white">Alege Materia:</label>
+                        <select id="materiiDropdown" name="SelectedMaterieId">
+                            <option value="" disabled selected>Selectează o materie</option>
+                            @foreach (var materie in materii)
+                            {
+                                <option value="@materie.Id">@materie.nume</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" id="hostRoom" class="page-btn">Creează Joc</button>
+                    </div>
+                </div>
+            }
+            <button type="button" id="joinRoom" class="page-btn">Alătură-te Joc</button>
+        </div>
+
+        <div id="joinGameForm" style="display: none;">
+            <p class="text-white"><h2>Introdu codul de 6 cifre</h2></p>
+            <form method="post" asp-action="SubmitCode">
+                <label for="gameCode" class="text-white">Cod:</label>
+                <input type="text"
+                       id="gameCode"
+                       name="gameCode"
+                       pattern="[0-9]{6}"
+                       placeholder="******"
+                       required />
+                <br /><br />
+                <button type="submit" class="page-btn">Alătură-te jocului</button>
+            </form>
         </div>
 
         <div id="materialsQuestion" style="display: none;">
-            <p class="text-white"><h2>Ai vrea sa joci cu materialele proprii sau sa le incerci pe cele deja existente?</h2></p>
+            <p class="text-white"><h2>Ai vrea să joci cu materialele proprii sau să le încerci pe cele deja existente?</h2></p>
             <button type="button" id="myMaterials" class="page-btn">Am propriile mele materiale.</button>
-            <button type="button" id="yourMaterials" class="page-btn" onclick="window.location.href='/Students/MateriiSingle'">As vrea sa le incerc pe cele deja existente.</button>
+            <button type="button" id="yourMaterials" class="page-btn" onclick="window.location.href='/Students/MateriiSingle'">As vrea să le încerci pe cele deja existente.</button>
         </div>
 
         <div id="materialsForm" style="display: none;">
             <div id="uploadForm">
-                <form method="post" enctype="multipart/form-data" asp-action="UploadPdf">
+                <form method="post" enctype="multipart/form-data" asp-action="UploadPdf" onsubmit="showLoadingScreen()">
                     <label for="file" class="text-white"></label>
                     <input type="file" name="file" accept=".pdf" />
-                    <input type="submit" value="Upload PDF" class="page-btn" />
+                    <input type="submit" value="Upload PDF" class="page-btn" id="uploadpdf-submit" />
                 </form>
+            </div>
+        </div>
+
+        <div id="loadingScreen" style="display: none;">
+            <div class="loading-container">
+                <div class="spinner"></div>
+                <p id="loadingMessage">Your PDF is being processed...</p>
             </div>
         </div>
     </div>

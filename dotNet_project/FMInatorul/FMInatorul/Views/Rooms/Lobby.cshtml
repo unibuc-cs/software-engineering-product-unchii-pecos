@@ -1,0 +1,265 @@
+﻿@model FMInatorul.Models.Room
+
+@{
+    var userFullName = ViewBag.UserFullName as string;
+}
+
+<style>
+    body {
+        margin-top: 20px;
+        background-color: #f8f9fa;
+    }
+
+    .chat {
+        margin: auto;
+        max-width: 400px;
+        /*background-color: rgba(255, 255, 255, 0.9); /* Fundal semi-transparent */
+        /*backdrop-filter: blur(10px); /* Efect de blur pentru fundal de tip glass */
+        box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+        border-radius: 15px;
+        overflow: hidden;
+    }
+
+    .chat-header {
+        padding: 10px;
+        background: #4a90e2; /* Culoare albastră mai plăcută */
+        color: #fff;
+        text-align: center;
+        border-top-left-radius: 15px;
+        border-top-right-radius: 15px;
+    }
+
+    .chat-body {
+        padding: 10px;
+        height: 300px;
+        overflow-y: auto;
+        background: rgba(241, 241, 241, 0.5); /* Fundal semi-transparent */
+        backdrop-filter: blur(7px); /* Efect de blur pentru fundal de tip glass */
+    }
+
+    .chat-footer {
+        padding: 10px;
+        background: #4a90e2; /* Culoare albastră mai plăcută */
+        color: #fff;
+        display: flex;
+        gap: 10px;
+        border-bottom-left-radius: 15px;
+        border-bottom-right-radius: 15px;
+    }
+
+    .chat-footer input {
+        flex-grow: 1;
+    }
+
+    .chat-footer button {
+        flex-shrink: 0;
+    }
+
+    .chat-message {
+        margin-bottom: 10px;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .chat-message.user {
+        align-items: flex-end;
+    }
+
+    .chat-message .message {
+        padding: 10px 15px;
+        border-radius: 20px;
+        background: #4a90e2; /* Culoare albastră mai plăcută */
+        color: #fff;
+        max-width: 70%;
+        word-wrap: break-word;
+    }
+
+    .chat-message.other .message {
+        background: #6c757d;
+    }
+
+    .chat-message .user-name {
+        font-weight: bold;
+        margin-bottom: 5px;
+    }
+</style>
+
+<div class="container mt-4">
+    <h2 class="text-white text-center">Welcome to Room @Model.Code</h2>
+    <div id="participantsContainer" class="card bg-dark text-white mt-3">
+        <div class="card-header">
+            <h5>Participants</h5>
+        </div>
+        <ul id="participantsList" class="list-group list-group-flush">
+            @foreach (var participant in Model.Participants)
+            {
+                var firstName = participant.Student?.ApplicationUser?.FirstName;
+                var lastName = participant.Student?.ApplicationUser?.LastName;
+                <li class="list-group-item bg-dark text-white">
+                    <span class="fw-bold">Student:</span> @firstName @lastName
+                </li>
+            }
+        </ul>
+    </div>  
+    
+    <div class="d-flex justify-content-between mt-3">
+        <button id="exitLobbyBtn" class="btn btn-danger w-50 me-2">Exit Lobby</button>
+        <button id="startGameBtn" class="btn btn-primary w-50">Start Game</button>
+    </div>
+
+    <div class="container mt-5 chat">
+        <div class="chat-header">
+            <h3>Lobby Chat</h3>
+        </div>
+        <div class="chat-body" id="messagesList"></div>
+        <div class="chat-footer">
+            <input type="text" id="messageInput" placeholder="Type your message here..." class="form-control" />
+            <button id="sendButton" class="btn btn-primary">Send</button>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/signalr/dist/browser/signalr.js"></script>
+    <script>
+		const userFullName = "@userFullName";
+        const code = "@Model.Code";
+
+        // start connection
+        const connection = new signalR.HubConnectionBuilder()
+            .withUrl("/roomHub")
+            .build();
+
+        connection.start().then(async () => {
+            console.log("SignalR connected in Lobby.");
+            // join signalR
+            await connection.invoke("JoinRoomGroup", code);
+        }).catch(err => console.error(err));
+
+        // UserJoined
+        connection.on("UserJoined", (userName) => {
+            console.log("UserJoined event from server:", userName);
+            const participantsList = document.getElementById("participantsList");
+            const li = document.createElement("li");
+            li.className = "list-group-item bg-dark text-white";
+
+            const labelNode = document.createElement("span");
+            labelNode.className = "fw-bold";
+            labelNode.textContent = "Student: ";
+
+            const userNameNode = document.createTextNode(userName);
+
+            li.appendChild(labelNode);
+            li.appendChild(userNameNode);
+
+            participantsList.appendChild(li);
+        });
+
+
+        // "UserLeft"
+        connection.on("UserLeft", (userName) => {
+            console.log("UserLeft event from server:", userName);
+
+            const participantsList = document.getElementById("participantsList");
+            if (!participantsList) return;
+
+            const listItems = participantsList.querySelectorAll("li");
+            for (const li of listItems) {
+                if (li.textContent.includes(userName)) {
+                    participantsList.removeChild(li);
+                    break;
+                }
+            }
+        });
+
+        // Exit
+        document.getElementById("exitLobbyBtn").addEventListener("click", async () => {
+            const code = "@Model.Code";
+
+            const response = await fetch('/Rooms/LeaveRoom', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(code)
+            });
+
+            const data = await response.json();
+            if (data.success) {
+                await connection.invoke("LeaveRoomGroup", code);
+                window.location.href = '/Students/Index';
+            }
+            else {
+                alert(data.message);
+            }
+        });
+
+		// Start Game
+        document.getElementById("startGameBtn").addEventListener("click", async () => {
+            const code = "@Model.Code";
+
+            try {
+                const response = await fetch('/Rooms/StartGame', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(code)
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    console.log("Game started successfully.");
+                } else {
+                    alert(data.message);
+                }
+            } catch (err) {
+                console.error("Error starting game:", err);
+            }
+        });
+
+        connection.on("StartGame", () => {
+            window.location.href = "/Rooms/Game";
+        });
+
+        // CHAT
+        // ReceiveMessage
+        connection.on("ReceiveMessage", (senderName, message) => {
+            const messagesContainer = document.getElementById("messagesList");
+
+            const div = document.createElement("div");
+            div.classList.add("chat-message");
+
+            const userNameDiv = document.createElement("div");
+            userNameDiv.classList.add("user-name");
+            userNameDiv.textContent = senderName;
+
+            const messageDiv = document.createElement("div");
+            messageDiv.classList.add("message");
+            messageDiv.textContent = message;
+
+            div.appendChild(userNameDiv);
+            div.appendChild(messageDiv);
+
+            if (senderName === userFullName) {
+                div.classList.add("user");
+            } else {
+                div.classList.add("other");
+            }
+
+            messagesContainer.appendChild(div);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        });
+
+		// SendMessage
+         document.getElementById("sendButton").addEventListener("click", async () => {
+            const messageInput = document.getElementById("messageInput");
+            const message = messageInput.value.trim();
+            if (!message) return;
+
+            try {
+                await connection.invoke("SendMessage", code, userFullName, message);
+                messageInput.value = "";
+            } catch (err) {
+                console.error("Error sending message:", err);
+            }
+        });
+    </script>
+}

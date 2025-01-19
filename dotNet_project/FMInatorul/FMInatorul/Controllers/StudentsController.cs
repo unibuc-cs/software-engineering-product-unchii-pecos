@@ -1,6 +1,7 @@
 ﻿using FMInatorul.Data;
 using FMInatorul.Migrations;
 using FMInatorul.Models;
+using FMInatorul.Utilities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -8,6 +9,7 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 using System.Diagnostics;
+using System.Text;
 
 namespace FMInatorul.Controllers
 {
@@ -51,7 +53,7 @@ namespace FMInatorul.Controllers
 				}
 			}
 
-			if (TempData.ContainsKey("SuccessMessage"))
+            if (TempData.ContainsKey("SuccessMessage"))
 			{
 				ViewBag.Message = TempData["SuccessMessage"];
 				return View(user);
@@ -60,9 +62,27 @@ namespace FMInatorul.Controllers
 		}
 
 		// Returns the play view.
-		public IActionResult Play()
+		public async Task<IActionResult> Play()
 		{
-			return View();
+            var userId = _userManager.GetUserId(User);
+
+            // Găsește student pe baza ApplicationUserId
+            var student = await db.Students.FirstOrDefaultAsync(s => s.ApplicationUserId == userId);
+
+            if (student == null)
+            {
+                return NotFound();
+            }
+
+            // Obține materiile care aparțin facultății studentului selectat
+            var materii = await db.Materii
+                .Where(m => m.FacultateID == student.FacultateID)
+                .Where(m => m.anStudiu == student.Year)
+                .Where(m => m.semestru == student.Semester)
+                .ToListAsync();
+            ViewBag.Materii = materii;
+
+            return View();
 		}
 
 		// Returns the view to upload a PDF file.
@@ -84,11 +104,15 @@ namespace FMInatorul.Controllers
 			{
 				return BadRequest("Invalid file format. Only PDF files allowed!");
 			}
+            var apiSecret = Environment.GetEnvironmentVariable("API_PASSWORD");
+            var jwtToken = await HttpHelper.GetJwtTokenAsync("dotnet_user", apiSecret, "https://api.fminatorul.xyz/login");
+            if (string.IsNullOrEmpty(jwtToken))
+            {
+                return StatusCode(401, "Failed to authenticate with the Flask API");
+            }
 
-            // Upload the PDF to Flask API (replace with your actual API URL)
-            //http://46.101.136.24/
 
-            var response = await UploadPdfToFlaskApiAsync(file, "http://34.65.214.77/");
+            var response = await HttpHelper.UploadPdfToFlaskApiAsync(file, "https://api.fminatorul.xyz/api/generate-quiz-external-links", jwtToken);
 
 			if (response.IsSuccessStatusCode)
 			{
@@ -96,7 +120,7 @@ namespace FMInatorul.Controllers
 				var responseString = await response.Content.ReadAsStringAsync();
 				var quiz = JsonConvert.DeserializeObject<QuizModel>(responseString); // Deserialize the JSON response
 
-				Debug.WriteLine($"Response String: {responseString}");
+                Debug.WriteLine($"Response String: {responseString}");
 
 				return View("Quiz", quiz); //Pass the quiz model to the view
 			}
@@ -113,25 +137,9 @@ namespace FMInatorul.Controllers
 			return file.ContentType.Contains("application/pdf");
 		}
 
-		// Uploads the PDF file to a Flask API.
-		private async Task<HttpResponseMessage> UploadPdfToFlaskApiAsync(IFormFile file, string url)
-		{
-			using (var client = new HttpClient())
-			{
-				using (var multipartContent = new MultipartFormDataContent())
-				{
-					using (var fileStream = file.OpenReadStream())
-					{
-						multipartContent.Add(new StreamContent(fileStream), "file", Path.GetFileName(file.FileName));
-						var response = await client.PostAsync(url, multipartContent);
-						return response;
-					}
-				}
-			}
-		}
 
-		// Returns the chat view.
-		public ActionResult ChatView()
+        // Returns the chat view.
+        public ActionResult ChatView()
 		{
 			return View();
 		}
@@ -149,7 +157,7 @@ namespace FMInatorul.Controllers
 
             var userId = _userManager.GetUserId(User);
 
-            // Găsește profesorul pe baza ApplicationUserId
+            // Găsește student pe baza ApplicationUserId
             var student = await db.Students.FirstOrDefaultAsync(s => s.ApplicationUserId == userId);
 
             if (student == null)
@@ -157,7 +165,7 @@ namespace FMInatorul.Controllers
                 return NotFound();
             }
 
-            // Obține materiile care aparțin facultății profesorului selectat
+            // Obține materiile care aparțin facultății studentului selectat
             var materii = await db.Materii
                 .Where(m => m.FacultateID == student.FacultateID)
 				.Where(m => m.anStudiu == student.Year)

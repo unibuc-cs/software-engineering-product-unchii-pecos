@@ -16,7 +16,10 @@ namespace FMInatorul.Models
 
 	public class QuizModel
 	{
+        [JsonProperty("questions")]
+        public List<QuestionModel> Questions { get; set; }
 
-		public List<QuestionModel> Questions { get; set; }
-	}
+        [JsonProperty("external-links")]
+        public List<string> ExternalLinks { get; set; }
+    }
 }

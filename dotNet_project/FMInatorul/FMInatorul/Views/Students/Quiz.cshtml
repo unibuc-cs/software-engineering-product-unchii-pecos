@@ -1,4 +1,4 @@
-﻿@model QuizModel
+﻿@model FMInatorul.Models.QuizModel
 
 <!DOCTYPE html>
 <html lang="en">
@@ -7,40 +7,66 @@
     <link rel="stylesheet" href="/css/Students/quiz.css" />
 </head>
 <body>
-<h2>Quiz</h2>
-<div id="quizContainer">
-    @if (Model.Questions.Any())
-    {
-        <form method="post" asp-controller="Students" asp-action="SubmitQuiz">
-            @for (int i = 0; i < Model.Questions.Count; i++)
-            {
-                <div class="question-box" id="question-box-@i">
-                    <p>@Model.Questions[i].Question</p>
-                    @* <p>@Model.Questions[i].Answer</p> *@
-                    <input type="hidden" name="Questions[@i].Question" value="@Model.Questions[i].Question">
-                    <input type="hidden" name="Questions[@i].Answer" value="@Model.Questions[i].Answer">
-                    <div class="choices-box">
-                        @foreach (var choice in Model.Questions[i].Choices)
+    <div class="quiz-wrapper">
+        <div class="quiz-container">
+            <!-- Sidebar -->
+            <div class="sidebar">
+                <ul class="question-nav">
+                    @for (int i = 0; i < Model.Questions.Count; i++)
+
+                    {
+                        <li data-question-index="@i" class="question-nav-item">
+                            <div class="question-number">@(@i + 1)</div>
+                        </li>
+                    }
+                </ul>
+            </div>
+
+            <!-- Main content area -->
+            <div class="main-content">
+                <form method="post" asp-controller="Students" asp-action="SubmitQuiz" class="quiz-form">
+                    @for (int i = 0; i < Model.Questions.Count; i++)
+                    {
+
+                        var question = Model.Questions[i];
+                        <div id="question-@i" class="question-item">
+                            <h2>Question @(@i + 1)</h2>
+                            <p>@question.Question</p>
+                            <input type="hidden" name="Questions[@i].Question" value="@Model.Questions[i].Question">
+                            <input type="hidden" name="Questions[@i].Answer" value="@Model.Questions[i].Answer">
+                            <div class="question-form">
+                                @foreach (var choice in question.Choices)
+
+                                {
+                                    <div class="choice-item">
+                                            <input type="radio" name="Questions[@i].SelectedAnswer" value="@choice.Key" id="question-@i-choice-@choice.Key" />
+                                        <label for="question-@i-choice-@choice.Key">
+                                            @choice.Value
+                                        </label>
+                                    </div>
+                                    <input type="hidden" name="Questions[@i].Choices[@choice.Key]" value="@choice.Value">
+                                }
+                                <button type="button" class="clear-selection">Clear Selection</button>
+                            </div>
+                        </div>
+                    }
+                    @if (Model.ExternalLinks != null)
+
+                    {
+                        @for (int j = 0; j < Model.ExternalLinks.Count; j++)
+
                         {
-                            <label>
-                                <input type="radio" name="Questions[@i].SelectedAnswer" value="@choice.Key" required>
-                                @choice.Value
-                            </label>
-                            <input type="hidden" name="Questions[@i].Choices[@choice.Key]" value="@choice.Value">
+                            <input type="hidden" name="ExternalLinks[@j]" value="@Model.ExternalLinks[j]" />
                         }
+                    }
+
+                    <div class="submit-button-container">
+                        <button type="submit" class="submit-button">Submit Quiz</button>
                     </div>
-                </div>
-            }
-            <button type="button" id="prev">Inapoi</button>
-            <button type="button" id="next">Inainte</button>
-            <input type="submit" value="Submit Quiz" style="display: none;">
-        </form>
-    }
-    else
-    {
-        <p>No quiz data available.</p>
-    }
-</div>
-<script src="~/js/Students/quiz.js"></script>
+                </form>
+            </div>
+        </div>
+    </div>
+    <script src="~/js/Students/quiz.js"></script>
 </body>
 </html>

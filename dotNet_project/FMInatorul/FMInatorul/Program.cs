@@ -4,7 +4,9 @@ using FMInatorul.Models;
 using FMInatorul.Hubs; 
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using DotNetEnv;
 
+Env.Load();
 var builder = WebApplication.CreateBuilder(args);
 
 
@@ -24,7 +26,17 @@ builder.Services.AddSignalR();
 
 builder.Services.AddControllersWithViews();
 builder.Services.AddRazorPages();
-builder.Services.AddSignalR(); 
+builder.Services.AddSignalR();
+
+builder.Services.Configure<IISServerOptions>(options =>
+{
+    options.MaxRequestBodySize = 104857600; // 100 MB
+});
+
+builder.WebHost.ConfigureKestrel(serverOptions =>
+{
+    serverOptions.Limits.MaxRequestBodySize = 104857600; // 100 MB
+});
 
 var app = builder.Build();
 
@@ -59,5 +71,6 @@ app.MapControllerRoute(
     pattern: "{controller=Home}/{action=IndexNew}/{id?}");
 app.MapRazorPages();
 app.MapHub<ChatHub>("/chatHub");
+app.MapHub<RoomHub>("/roomHub");
 
 app.Run();

@@ -25,6 +25,23 @@
         }
         <h2 class="text-white">Your Score: @Model.Questions.Count(question => question.SelectedAnswer == question.Answer) out of @Model.Questions.Count</h2>
     </div>
+    <div class="link-section">
+            @if (Model.ExternalLinks != null && Model.ExternalLinks.Any())
+
+            {
+                <h2>Related Links</h2>
+                <div class="external-links">
+                    @foreach (var link in Model.ExternalLinks)
+
+                    {
+                        <div class="link-preview glass">
+                            <a href="@link" target="_blank" class="link-box">@link</a>
+                        </div>
+                    }
+                </div>
+            }
+    </div>
+    
 }
 else
 {
