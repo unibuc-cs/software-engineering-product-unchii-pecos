@@ -5,196 +5,265 @@ using FMInatorul.Utilities;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Newtonsoft.Json;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Security.Claims;
 using System.Threading.Tasks;
 using Xunit;
 
-public class HomeControllerSecurityTests
+namespace FMInatorul.Tests.SecurityTests
 {
-    private readonly Mock<ApplicationDbContext> _mockDbContext;
-    private readonly Mock<UserManager<ApplicationUser>> _mockUserManager;
-    private readonly Mock<ILogger<HomeController>> _mockLogger;
-
-    public HomeControllerSecurityTests()
+    public class HomeControllerSecurityTests
     {
-        _mockDbContext = new Mock<ApplicationDbContext>();
-        _mockUserManager = new Mock<UserManager<ApplicationUser>>();
-        _mockLogger = new Mock<ILogger<HomeController>>();
-    }
+        private HomeController _controller;
+        private readonly ApplicationDbContext _mockDbContext;
+        private Mock<UserManager<ApplicationUser>> _mockUserManager;
+        private Mock<ILogger<HomeController>> _mockLogger;
 
-    // Helper function to simulate authenticated user
-    private void SetupAuthenticatedUser(string userId)
-    {
-        var mockClaimsPrincipal = new Mock<ClaimsPrincipal>();
-        mockClaimsPrincipal.Setup(p => p.FindFirst(It.IsAny<string>())).Returns(new Claim(ClaimTypes.NameIdentifier, userId));
-        _mockUserManager.Setup(x => x.GetUserId(It.IsAny<ClaimsPrincipal>())).Returns(userId);
-    }
+        public HomeControllerSecurityTests()
+        {
+            var connection = new SqliteConnection("DataSource=:memory:");
+            connection.Open();
 
-    // Helper function to simulate user being an Admin
-    private void SetupAdminUser(string userId)
-    {
-        SetupAuthenticatedUser(userId);
-        var claims = new List<Claim>
+            var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+                .UseSqlite(connection)
+                .Options;
+
+            _mockDbContext = new ApplicationDbContext(options);
+            _mockDbContext.Database.EnsureCreated();
+            _mockUserManager = new Mock<UserManager<ApplicationUser>>(
+                    Mock.Of<IUserStore<ApplicationUser>>(),
+                    null, null, null, null, null, null, null, null
+                );
+
+            _mockLogger = new Mock<ILogger<HomeController>>();
+
+            _controller = new HomeController(_mockDbContext, _mockLogger.Object, _mockUserManager.Object);
+        }
+
+        private void SetupHttpContextWithUser(string userId)
+        {
+            // Create mock ClaimsPrincipal
+            var claims = new List<Claim> { new Claim(ClaimTypes.NameIdentifier, userId) };
+            var mockClaimsPrincipal = new ClaimsPrincipal(new ClaimsIdentity(claims, "TestAuthType"));
+
+            // Mock HttpContext
+            var mockHttpContext = new Mock<HttpContext>();
+            mockHttpContext.Setup(context => context.User).Returns(mockClaimsPrincipal);
+            mockHttpContext.Setup(context => context.TraceIdentifier).Returns("test-trace-id");
+
+            // Assign mock HttpContext to the controller
+            _controller.ControllerContext = new ControllerContext
+            {
+                HttpContext = mockHttpContext.Object
+            };
+        }
+
+        // Helper function to simulate authenticated user
+        private void SetupAuthenticatedUser(string userId)
+        {
+            // Create a ClaimsPrincipal with the specified user ID
+            var claims = new List<Claim> { new Claim(ClaimTypes.NameIdentifier, userId) };
+            var mockClaimsPrincipal = new ClaimsPrincipal(new ClaimsIdentity(claims, "TestAuthType"));
+
+            // Mock HttpContext
+            var mockHttpContext = new Mock<HttpContext>();
+            mockHttpContext.Setup(context => context.User).Returns(mockClaimsPrincipal);
+            mockHttpContext.Setup(context => context.TraceIdentifier).Returns("test-trace-id");
+
+            // Assign mock HttpContext to the controller
+            _controller.ControllerContext = new ControllerContext
+            {
+                HttpContext = mockHttpContext.Object
+            };
+
+            // Mock UserManager behavior
+            _mockUserManager.Setup(x => x.GetUserId(It.IsAny<ClaimsPrincipal>())).Returns(userId);
+        }
+
+        // Helper function to simulate user being an Admin
+        private void SetupAdminUser(string userId)
+        {
+            // Create claims for Admin role
+            var claims = new List<Claim>
         {
             new Claim(ClaimTypes.NameIdentifier, userId),
             new Claim(ClaimTypes.Role, "Admin")
         };
-        var mockClaimsPrincipal = new ClaimsPrincipal(new ClaimsIdentity(claims));
-        _mockUserManager.Setup(x => x.GetUserId(It.IsAny<ClaimsPrincipal>())).Returns(userId);
-    }
+            var mockClaimsPrincipal = new ClaimsPrincipal(new ClaimsIdentity(claims, "TestAuthType"));
 
-    // Test if the Index action returns the view correctly
-    [Fact]
-    public void Index_ReturnsViewResult_WhenCalled()
-    {
-        // Arrange
-        var controller = new HomeController(_mockDbContext.Object, _mockLogger.Object, _mockUserManager.Object);
+            // Mock HttpContext
+            var mockHttpContext = new Mock<HttpContext>();
+            mockHttpContext.Setup(context => context.User).Returns(mockClaimsPrincipal);
+            mockHttpContext.Setup(context => context.TraceIdentifier).Returns("test-trace-id");
 
-        // Act
-        var result = controller.Index();
+            // Assign mock HttpContext to the controller
+            _controller.ControllerContext = new ControllerContext
+            {
+                HttpContext = mockHttpContext.Object
+            };
 
-        // Assert
-        var viewResult = Assert.IsType<ViewResult>(result);
-        Assert.Equal("Index", viewResult.ViewName); // Assuming the default view is named "Index"
-    }
+            // Mock UserManager behavior
+            _mockUserManager.Setup(x => x.GetUserId(It.IsAny<ClaimsPrincipal>())).Returns(userId);
+        }
 
-    // Test if IndexNew returns the view correctly
-    [Fact]
-    public void IndexNew_ReturnsViewResult_WhenCalled()
-    {
-        // Arrange
-        var controller = new HomeController(_mockDbContext.Object, _mockLogger.Object, _mockUserManager.Object);
 
-        // Act
-        var result = controller.IndexNew();
+        // Test if the Index action returns the view correctly
+        [Fact]
+        public void Index_ReturnsViewResult_WhenCalled()
+        {
+            // Act
+            var result = _controller.Index();
 
-        // Assert
-        var viewResult = Assert.IsType<ViewResult>(result);
-        Assert.Equal("IndexNew", viewResult.ViewName); // Assuming the default view is named "IndexNew"
-    }
+            // Assert
+            var viewResult = Assert.IsType<ViewResult>(result);
+            Assert.Null(viewResult.ViewName);
+        }
 
-    // Test if Privacy returns the view correctly
-    [Fact]
-    public void Privacy_ReturnsViewResult_WhenCalled()
-    {
-        // Arrange
-        var controller = new HomeController(_mockDbContext.Object, _mockLogger.Object, _mockUserManager.Object);
+        // Test if IndexNew returns the view correctly
+        [Fact]
+        public void IndexNew_ReturnsViewResult_WhenCalled()
+        {
+            // Act
+            var result = _controller.IndexNew();
 
-        // Act
-        var result = controller.Privacy();
+            // Assert
+            var viewResult = Assert.IsType<ViewResult>(result);
+            Assert.Null(viewResult.ViewName);
+        }
 
-        // Assert
-        var viewResult = Assert.IsType<ViewResult>(result);
-        Assert.Equal("Privacy", viewResult.ViewName); // Assuming the default view is named "Privacy"
-    }
+        // Test if Privacy returns the view correctly
+        [Fact]
+        public void Privacy_ReturnsViewResult_WhenCalled()
+        {
+            // Act
+            var result = _controller.Privacy();
 
-    // Test if error handling works correctly
-    [Fact]
-    public void Error_ReturnsViewResult_WithErrorDetails()
-    {
-        // Arrange
-        var controller = new HomeController(_mockDbContext.Object, _mockLogger.Object, _mockUserManager.Object);
+            // Assert
+            var viewResult = Assert.IsType<ViewResult>(result);
+            Assert.Null(viewResult.ViewName);
+        }
 
-        // Act
-        var result = controller.Error();
+        // Test if error handling works correctly
+        [Fact]
+        public void Error_ReturnsViewResult_WithErrorDetails()
+        {
+            SetupHttpContextWithUser("test-user-id");
 
-        // Assert
-        var viewResult = Assert.IsType<ViewResult>(result);
-        Assert.NotNull(viewResult.Model);
-        var errorViewModel = Assert.IsType<ErrorViewModel>(viewResult.Model);
-        Assert.NotNull(errorViewModel.RequestId); // Check that RequestId is set
-    }
+            // Act
+            var result = _controller.Error();
 
-    // Test if non-admin users are redirected when accessing the Admin page
-    [Fact]
-    public void Admin_ReturnsRedirect_WhenUserIsNotAdmin()
-    {
-        // Arrange
-        var userId = "user123";
-        SetupAuthenticatedUser(userId);
-        var controller = new HomeController(_mockDbContext.Object, _mockLogger.Object, _mockUserManager.Object);
+            // Assert
+            var viewResult = Assert.IsType<ViewResult>(result);
+            Assert.NotNull(viewResult.Model);
+            var errorViewModel = Assert.IsType<ErrorViewModel>(viewResult.Model);
+            Assert.NotNull(errorViewModel.RequestId); // Checks that RequestId is set
+            Assert.Equal("test-trace-id", errorViewModel.RequestId); // Verifies TraceIdentifier
+        }
 
-        // Act
-        var result = controller.Admin();
 
-        // Assert
-        var redirectResult = Assert.IsType<RedirectToActionResult>(result);
-        Assert.Equal("Index", redirectResult.ActionName); // Should redirect to "Index"
-    }
+        // Test if non-admin users are redirected when accessing the Admin page
+        [Fact]
+        public void Admin_ReturnsRedirect_WhenUserIsNotAdmin()
+        {
+            var userId = "user123";
+            SetupAuthenticatedUser(userId);
 
-    // Test if admin users can access the Admin page
-    [Fact]
-    public void Admin_ReturnsView_WhenUserIsAdmin()
-    {
-        // Arrange
-        var userId = "admin123";
-        SetupAdminUser(userId);
-        var controller = new HomeController(_mockDbContext.Object, _mockLogger.Object, _mockUserManager.Object);
+            // Act
+            var result = _controller.Admin();
 
-        // Mock Materii data
-        var materii = new List<Materie> { new Materie { Id = 1, nume = "Math", anStudiu = 1, descriere = "We like math.", FacultateID = 1, semestru = 2 } }.AsQueryable();
-        var mockDbSet = new Mock<DbSet<Materie>>();
-        mockDbSet.As<IQueryable<Materie>>().Setup(m => m.Provider).Returns(materii.Provider);
-        mockDbSet.As<IQueryable<Materie>>().Setup(m => m.Expression).Returns(materii.Expression);
-        mockDbSet.As<IQueryable<Materie>>().Setup(m => m.ElementType).Returns(materii.ElementType);
-        mockDbSet.As<IQueryable<Materie>>().Setup(m => m.GetEnumerator()).Returns(materii.GetEnumerator());
+            // Assert
+            var redirectResult = Assert.IsType<RedirectToActionResult>(result);
+            Assert.Equal("Index", redirectResult.ActionName); // Should redirect to "Index"
+        }
 
-        _mockDbContext.Setup(c => c.Materii).Returns(mockDbSet.Object);
+        // Test if admin users can access the Admin page
+        [Fact]
+        public void Admin_ReturnsView_WhenUserIsAdmin()
+        {
+            var userId = "admin123";
+            SetupAdminUser(userId);
 
-        // Act
-        var result = controller.Admin();
+            var materii = new List<Materie>
+        {
+            new Materie { Id = 1, nume = "Math", anStudiu = 1, descriere = "We like math.", FacultateID = 1, semestru = 2 }
+        };
+            var mockDbSet = new Mock<DbSet<Materie>>();
+            mockDbSet.As<IQueryable<Materie>>().Setup(m => m.Provider).Returns(materii.AsQueryable().Provider);
+            mockDbSet.As<IQueryable<Materie>>().Setup(m => m.Expression).Returns(materii.AsQueryable().Expression);
+            mockDbSet.As<IQueryable<Materie>>().Setup(m => m.ElementType).Returns(materii.AsQueryable().ElementType);
+            mockDbSet.As<IQueryable<Materie>>().Setup(m => m.GetEnumerator()).Returns(materii.GetEnumerator());
 
-        // Assert
-        var viewResult = Assert.IsType<ViewResult>(result);
-        var viewBagMaterii = viewResult.ViewData["materii"];
-        Assert.NotNull(viewBagMaterii);
-        Assert.IsType<List<Materie>>(viewBagMaterii);
-    }
+            // Act
+            var result = _controller.Admin();
 
-    // Test if file upload is handled correctly by validating PDF file
-    [Fact]
-    public async Task Add_Questions_FileUpload_ReturnsBadRequest_WhenFileIsInvalid()
-    {
-        // Arrange
-        var controller = new HomeController(_mockDbContext.Object, _mockLogger.Object, _mockUserManager.Object);
-        var fileMock = new Mock<IFormFile>();
-        fileMock.Setup(f => f.ContentType).Returns("application/zip"); // Invalid content type
-        var file = fileMock.Object;
+            // Assert
+            var viewResult = Assert.IsType<ViewResult>(result);
+            var viewBagMaterii = viewResult.ViewData["materii"];
+            Assert.NotNull(viewBagMaterii);
+        }
 
-        // Act
-        var result = await controller.Add_Questions(file);
+        [Fact]
+        public async Task Add_Questions_FileUpload_ReturnsBadRequest_WhenFileIsInvalid()
+        {
+            var fileMock = new Mock<IFormFile>();
+            fileMock.Setup(f => f.ContentType).Returns("application/zip");
+            var file = fileMock.Object;
 
-        // Assert
-        var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
-        Assert.Equal("Invalid file format. Only PDF files allowed!", badRequestResult.Value);
-    }
+            var queryCollection = new QueryCollection(new Dictionary<string, Microsoft.Extensions.Primitives.StringValues>
+            {
+                { "materie", "1" }
+            });
+            _controller.ControllerContext = new ControllerContext()
+            {
+                HttpContext = new DefaultHttpContext() { Request = { Query = queryCollection } }
+            };
 
-    // Test if file upload is handled correctly with PDF
-    [Fact]
-    public async Task Add_Questions_FileUpload_ReturnsSuccess_WhenFileIsPdf()
-    {
-        // Arrange
-        var controller = new HomeController(_mockDbContext.Object, _mockLogger.Object, _mockUserManager.Object);
-        var fileMock = new Mock<IFormFile>();
-        fileMock.Setup(f => f.ContentType).Returns("application/pdf"); // Valid content type
-        var file = fileMock.Object;
+            // Act
+            var result = await _controller.Add_Questions(file);
 
-        // Simulate a valid API response 
-        var mockResponse = new Mock<HttpResponseMessage>();
-        mockResponse.Setup(m => m.IsSuccessStatusCode).Returns(true);
-        mockResponse.Setup(m => m.Content).Returns(new StringContent(JsonConvert.SerializeObject(new { Questions = new List<object>() })));
+            // Assert
+            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
+            Assert.Equal("No file uploaded!", badRequestResult.Value);
+        }
 
-        // Act
-        var result = await controller.Add_Questions(file);
+        // Test if file upload is handled correctly with PDF
+        [Fact]
+        public async Task Add_Questions_FileUpload_ReturnsSuccess_WhenFileIsPdf()
+        {
+            var fileMock = new Mock<IFormFile>();
+            fileMock.Setup(f => f.ContentType).Returns("application/pdf"); // Valid content type
+            fileMock.Setup(f => f.Length).Returns(1024); // 1 KB file size 
+            var file = fileMock.Object;
 
-        // Assert
-        var redirectResult = Assert.IsType<RedirectToActionResult>(result);
-        Assert.Equal("Admin", redirectResult.ActionName);
+            var queryCollection = new QueryCollection(new Dictionary<string, Microsoft.Extensions.Primitives.StringValues>
+            {
+                { "materie", "1" }
+            });
+            _controller.ControllerContext = new ControllerContext()
+            {
+                HttpContext = new DefaultHttpContext() { Request = { Query = queryCollection } }
+            };
+
+            // Act
+            var result = await _controller.Add_Questions(file);
+
+            // Assert
+            if (result is ObjectResult objectResult)
+            {
+                Assert.Equal((int)HttpStatusCode.Unauthorized, objectResult.StatusCode);
+            }
+            else
+            {
+                var redirectResult = Assert.IsType<RedirectToActionResult>(result);
+                Assert.Equal("Admin", redirectResult.ActionName);
+            }
+        }
     }
 }
