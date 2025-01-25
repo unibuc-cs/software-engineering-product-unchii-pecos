@@ -24,6 +24,8 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     // room
     public DbSet<Room> Rooms { get; set; }
     public DbSet<Participant> Participants { get; set; }
+    public DbSet<AnswerRecord> AnswerRecords { get; set; }
+    public DbSet<AnswerSubmission> AnswerSubmissions { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

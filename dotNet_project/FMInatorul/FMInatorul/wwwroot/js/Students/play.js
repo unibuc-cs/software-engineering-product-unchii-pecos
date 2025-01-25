@@ -60,34 +60,6 @@
     });
     
 
-    // for the room
-    /*hostRoomBtn.addEventListener('click', async function () {
-        const selectedMaterieId = document.getElementById('materiiDropdown').value;
-
-        if (!selectedMaterieId) {
-            alert('Te rugăm să selectezi o materie');
-            return;
-        }
-        // CreateRoom endpoint
-        const response = await fetch('/Rooms/CreateRoom', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({selectedMaterieId})
-        });
-        const data = await response.json();
-
-        // did we get the code?
-        if (data.code) {
-            window.location.href = `/Rooms/Lobby?code=${data.code}`;
-            connection.invoke('JoinRoomGroup', data.code);
-        } else {
-            // :(
-            alert('Could not create room');
-        }
-    });*/
-
     multiplayerChoice.addEventListener('submit', async (e) => {
         e.preventDefault();
         console.log("am ajuns aici");
@@ -129,6 +101,79 @@
             alert(data.message);
         }
     });
+
+    document.getElementById("startGameBtn").addEventListener("click", async () => {
+        // Trimitem solicitarea către server pentru a începe jocul
+        try {
+            connection.on("StartGame", (questions) => {
+                startQuestion(questions, 0);  // Start the first question
+            });
+            console.log("Questions received:", questions);
+        } catch (err) {
+            console.error("Error starting game:", err);
+        }
+    });
+
+    // Function to display question and handle timer
+    function startQuestion(questions, questionIndex) {
+        if (questionIndex >= questions.length) {
+            // All questions are done, get results
+            connection.invoke("GetResults", code).then((data) => {
+                displayResults(data.results);
+            });
+            return;
+        }
+
+        const question = questions[questionIndex];
+        const questionDiv = document.getElementById("questionDiv");
+        questionDiv.innerHTML = `
+        <h3>${question.text}</h3>
+        <ul id="answersList">
+            ${question.answers.map((answer, index) => `<li data-answer="${answer}">${answer}</li>`).join('')}
+        </ul>
+        <p id="timer"></p>
+    `;
+
+        const timerElement = document.getElementById("timer");
+        let timeLeft = 30;  // 30 second timer
+
+        const timerInterval = setInterval(() => {
+            timeLeft--;
+            timerElement.textContent = `${timeLeft} seconds remaining`;
+            if (timeLeft <= 0) {
+                clearInterval(timerInterval);
+                submitAnswer(questionIndex, null);  // Automatically submit if no answer
+            }
+        }, 1000);
+
+        // Collect answer when user clicks
+        document.querySelectorAll("#answersList li").forEach(item => {
+            item.addEventListener("click", () => {
+                clearInterval(timerInterval);
+                submitAnswer(questionIndex, item.dataset.answer);
+            });
+        });
+
+        // Function to submit answer
+        function submitAnswer(questionIndex, answer) {
+            connection.invoke("SubmitAnswer", {
+                RoomCode: code,
+                QuestionID: questions[questionIndex].id,
+                Answer: answer || "",
+                StudentId: userId
+            });
+            startQuestion(questions, questionIndex + 1);  // Move to the next question
+        }
+    }
+
+    // Display results
+    function displayResults(results) {
+        const resultsDiv = document.getElementById("resultsDiv");
+        resultsDiv.innerHTML = results.map(result => `
+        <p>${result.Participant}: ${result.CorrectAnswers} correct answers</p>
+    `).join('');
+    }
+
 
     const loadingScreen = document.getElementById("loadingScreen");
     const loadingMessage = document.getElementById("loadingMessage");

@@ -244,21 +244,102 @@ namespace FMInatorul.Controllers
         [HttpPost]
         public async Task<IActionResult> StartGame([FromBody] string code)
         {
-            // find the room
+            // Find the room
             var room = await _context.Rooms
                 .Include(r => r.Participants)
                     .ThenInclude(p => p.Student)
                         .ThenInclude(s => s.ApplicationUser)
+                .Include(r => r.Materie)  
                 .FirstOrDefaultAsync(r => r.Code == code);
+
             if (room == null)
             {
                 return Json(new { success = false, message = "Room not found" });
             }
 
-            await _roomHubContext.Clients.Group(code)
-                .SendAsync("StartGame");
+            // Retrieve the questions (assuming you have a 'Questions' table linked to Materie)
+            var questions = await _context.IntrebariRasps
+                .Where(q => q.MaterieId == room.MaterieID)
+                .ToListAsync();
 
-            return Json(new { success = true, message = "Game started" });
+            if (questions.Count == 0)
+            {
+                return Json(new { success = false, message = "No questions available for this room." });
+            }
+
+            // Start the game by sending the first question
+            await _roomHubContext.Clients.Group(code)
+                .SendAsync("StartGame", questions);
+
+            return Json(new { success = true, message = "Game started." });
+        }
+
+        public async Task<IActionResult> SubmitAnswer([FromBody] AnswerSubmission answer)
+        {
+            var room = await _context.Rooms
+                .Include(r => r.Participants)
+                .FirstOrDefaultAsync(r => r.Code == answer.RoomCode);
+
+            if (room == null)
+            {
+                return Json(new { success = false, message = "Room not found" });
+            }
+
+            // Store the answer in the database for later result calculation
+            var participant = await _context.Participants
+                .FirstOrDefaultAsync(p => p.RoomId == room.RoomId && p.ParticipantId == answer.ParticipantId);
+
+            if (participant == null)
+            {
+                return Json(new { success = false, message = "Participant not found in the room." });
+            }
+
+            var question = await _context.IntrebariRasps
+                .FirstOrDefaultAsync(q => q.Id == answer.Id);
+
+            if (question != null)
+            {
+                // Check if the answer is correct and store it
+                bool isCorrect = question.raspunsCorect == answer.Answer;
+                var answerRecord = new AnswerRecord
+                {
+                    ParticipantId = participant.ParticipantId,
+                    QuestionId = question.Id,
+                    Answer = answer.Answer,
+                    IsCorrect = isCorrect,
+                };
+
+                _context.AnswerRecords.Add(answerRecord);
+                await _context.SaveChangesAsync();
+            }
+
+            return Json(new { success = true, message = "Answer submitted" });
+        }
+
+        public async Task<IActionResult> GetResults(string code)
+        {
+            var room = await _context.Rooms
+                .Include(r => r.Participants)
+                .ThenInclude(p => p.Student)
+                .FirstOrDefaultAsync(r => r.Code == code);
+
+            if (room == null)
+            {
+                return Json(new { success = false, message = "Room not found" });
+            }
+
+            var results = await _context.AnswerRecords
+                .Where(ar => ar.Participant.RoomId == room.RoomId)
+                .GroupBy(ar => ar.ParticipantId)
+                .Select(g => new
+                {
+                    Participant = g.FirstOrDefault().Participant.Student.ApplicationUser.FirstName,
+                    CorrectAnswers = g.Count(ar => ar.IsCorrect)
+                })
+                .OrderByDescending(r => r.CorrectAnswers)
+                .ToListAsync();
+
+            return Json(new { success = true, results });
         }
 
         public IActionResult Game()
