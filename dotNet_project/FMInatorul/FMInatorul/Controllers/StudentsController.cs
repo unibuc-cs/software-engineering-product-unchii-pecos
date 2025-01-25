@@ -69,6 +69,11 @@ namespace FMInatorul.Controllers
             // Găsește student pe baza ApplicationUserId
             var student = await db.Students.FirstOrDefaultAsync(s => s.ApplicationUserId == userId);
 
+            if (string.IsNullOrEmpty(userId))
+            {
+                return new ChallengeResult(); // Return 401 Unauthorized
+            }
+
             if (student == null)
             {
                 return NotFound();
@@ -88,7 +93,13 @@ namespace FMInatorul.Controllers
 		// Returns the view to upload a PDF file.
 		public IActionResult UploadPdf()
 		{
-			return View();
+            var userId = _userManager.GetUserId(User);
+            if (string.IsNullOrEmpty(userId))
+            {
+                return new ChallengeResult(); // Return 401 Unauthorized
+            }
+
+            return View();
 		}
 
 		// Handles the post request to upload a PDF file.
@@ -141,14 +152,20 @@ namespace FMInatorul.Controllers
         // Returns the chat view.
         public ActionResult ChatView()
 		{
-			return View();
+            var userId = _userManager.GetUserId(User);
+            if (string.IsNullOrEmpty(userId))
+            {
+                return new ChallengeResult(); // Return 401 Unauthorized
+            }
+
+            return View();
 		}
 
 		// Handles the post request to submit a quiz.
 		[HttpPost]
 		public IActionResult SubmitQuiz(QuizModel quiz)
 		{
-			return View("Results", quiz);
+            return View("Results", quiz);
 		}
 
 		// Returns the view for single subject selection.
@@ -159,6 +176,11 @@ namespace FMInatorul.Controllers
 
             // Găsește student pe baza ApplicationUserId
             var student = await db.Students.FirstOrDefaultAsync(s => s.ApplicationUserId == userId);
+
+            if (string.IsNullOrEmpty(userId))
+            {
+                return new ChallengeResult(); // Return 401 Unauthorized
+            }
 
             if (student == null)
             {
@@ -180,7 +202,11 @@ namespace FMInatorul.Controllers
 		{
 			var userId = _userManager.GetUserId(User);
 			var student = await db.Students.FirstOrDefaultAsync(s => s.ApplicationUserId == userId);
-			if (student == null)
+            if (string.IsNullOrEmpty(userId))
+            {
+                return new ChallengeResult(); // Return 401 Unauthorized
+            }
+            if (student == null)
 			{
 				return NotFound();
 			}
@@ -230,7 +256,11 @@ namespace FMInatorul.Controllers
 		{
 			var userId = _userManager.GetUserId(User);
 			var student = await db.Students.FirstOrDefaultAsync(s => s.ApplicationUserId == userId);
-			if (student == null)
+            if (string.IsNullOrEmpty(userId))
+            {
+                return new ChallengeResult(); // Return 401 Unauthorized
+            }
+            if (student == null)
 			{
 				return NotFound();
 			}
@@ -280,7 +310,12 @@ namespace FMInatorul.Controllers
         {
             var userId = _userManager.GetUserId(User);
             var student = await db.Students.FirstOrDefaultAsync(s => s.ApplicationUserId == userId);
-            
+
+            if (string.IsNullOrEmpty(userId))
+            {
+                return new ChallengeResult(); // Return 401 Unauthorized
+            }
+
             if (student == null)
             {
                 TempData["ErrorMessage"] = "Student not found.";

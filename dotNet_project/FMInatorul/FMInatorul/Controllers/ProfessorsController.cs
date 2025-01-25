@@ -58,6 +58,10 @@ namespace FMInatorul.Controllers
         public async Task<IActionResult> EditMaterie()
         {
             var userId = _userManager.GetUserId(User);
+            if (string.IsNullOrEmpty(userId))
+            {
+                return new ChallengeResult(); // Return 401 Unauthorized
+            }
             var profesor = await db.Professors
                 .Include(p => p.MateriiPredate)
                 .FirstOrDefaultAsync(s => s.ApplicationUserId == userId);
@@ -90,6 +94,11 @@ namespace FMInatorul.Controllers
         [HttpPost]
         public async Task<IActionResult> EditMaterie(Profesor profesor)
         {
+            var userId = _userManager.GetUserId(User);
+            if (string.IsNullOrEmpty(userId))
+            {
+                return new ChallengeResult(); // Return 401 Unauthorized
+            }
             // Validare: Verifică dacă s-au selectat materii
             if (profesor.SelectedMateriiIds == null || !profesor.SelectedMateriiIds.Any())
             {
@@ -201,6 +210,17 @@ namespace FMInatorul.Controllers
         [HttpPost]
         public IActionResult EditCollegeProf(int id, Profesor profesor)
         {
+            var currentUser = _userManager.GetUserAsync(User).Result;
+            if (currentUser == null)
+            {
+                return Forbid(); 
+            }
+            var student = db.Students.FirstOrDefault(s => s.ApplicationUserId == currentUser.Id);
+            if (student != null)
+            {
+                return Forbid();
+            }
+
             if (ModelState.IsValid)
             {
                 return View(profesor);
@@ -231,7 +251,12 @@ namespace FMInatorul.Controllers
         // Validates a question by setting its validation status.
         public async Task<IActionResult> Valideaza(int? id)
 		{
-			if (id == null)
+            var userId = _userManager.GetUserId(User);
+            if (string.IsNullOrEmpty(userId))
+            {
+                return new ChallengeResult(); // Return 401 Unauthorized
+            }
+            if (id == null)
 			{
 				return NotFound();
 			}
@@ -252,7 +277,12 @@ namespace FMInatorul.Controllers
 		// Deletes a question.
 		public async Task<IActionResult> NuValideaza(int? id)
 		{
-			if (id == null)
+            var userId = _userManager.GetUserId(User);
+            if (string.IsNullOrEmpty(userId))
+            {
+                return new ChallengeResult(); // Return 401 Unauthorized
+            }
+            if (id == null)
 			{
 				return NotFound();
 			}

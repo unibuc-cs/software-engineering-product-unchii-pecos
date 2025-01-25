@@ -34,16 +34,16 @@ namespace FMInatorul.Controllers
         [HttpPost]
         public async Task<IActionResult> JoinRoom([FromBody] JoinRoomRequest request)
         {
-            if (string.IsNullOrEmpty(request.Code))
-            {
-                return Json(new { success = false, message = "Invalid room code" });
-            }
-
             // use ApplicationUser to get identity user id
             var userId = _userManager.GetUserId(User);
             if (string.IsNullOrEmpty(userId))
             {
                 return Json(new { success = false, message = "You must be logged in to join a room" });
+            }
+
+            if (request == null || string.IsNullOrEmpty(request.Code))
+            {
+                return Json(new { success = false, message = "Invalid room code" });
             }
 
             // find the student profile
